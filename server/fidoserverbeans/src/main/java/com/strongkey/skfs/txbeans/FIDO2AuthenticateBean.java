@@ -18,6 +18,7 @@ import com.strongkey.skfs.fido2.FIDO2AuthenticatorData;
 import com.strongkey.skfs.pojos.RegistrationSettings;
 import com.strongkey.skfs.policybeans.getCachedFidoPolicyMDSLocal;
 import com.strongkey.skfs.policybeans.verifyFido2AuthenticationPolicyLocal;
+import com.strongkey.skfs.utilities.SKFEException;
 import com.strongkey.skfs.utilities.SKIllegalArgumentException;
 import com.strongkey.skfs.utilities.skfsCommon;
 import com.strongkey.skfs.utilities.skfsConstants;
@@ -323,6 +324,12 @@ public class FIDO2AuthenticateBean implements FIDO2AuthenticateBeanLocal {
             // Verify username received in metadata matches the username for the received challenge
             if (!username_received.equalsIgnoreCase(username)) {
                 throw new SKIllegalArgumentException(skfsCommon.buildReturn(skfsCommon.getMessageProperty("FIDO-ERR-0037")));
+            }
+            
+            //challenge verification is missing???
+            if (!bdnonce.equals(challenge)) {
+                skfsLogger.logp(skfsConstants.SKFE_LOGGER,Level.SEVERE, classname, "U2FAuthenticationResponse", skfsCommon.getMessageProperty("FIDO-ERR-5012"), "");
+                throw new SKFEException(skfsCommon.getMessageProperty("FIDO-ERR-5012"));
             }
 
             //  3. Do processing

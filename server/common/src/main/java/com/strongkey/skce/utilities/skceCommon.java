@@ -8,13 +8,22 @@
 package com.strongkey.skce.utilities;
 
 import com.strongkey.appliance.utilities.applianceCommon;
+import com.strongkey.appliance.utilities.strongkeyLogger;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URL;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.Enumeration;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
 import javax.naming.Context;
 import javax.naming.NamingException;
 import javax.naming.directory.DirContext;
@@ -68,6 +77,97 @@ public class skceCommon {
     private static String SEARCH_OU_PREFIX;
 
     static {
+        
+        /**
+         * Print out the values of the central configuration properties built
+         * into the application - sort it for readability
+         */
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Enumeration<String> enm = defaultSKCEConfig.getKeys();
+        List<String> keys = new ArrayList<>();
+        while (enm.hasMoreElements()) {
+            keys.add(enm.nextElement());
+        }
+
+        Collections.sort((List<String>) keys);
+        Iterator it = keys.iterator();
+        try {
+            while (it.hasNext()) {
+                String key = (String) it.next();
+                baos.write(("\n\t" + key + ": ").getBytes());
+                if (key.contains("password") || key.contains("secretkey") || key.contains("accesskey")) {
+                    baos.write(("**********").getBytes());
+                } else {
+                    baos.write((defaultSKCEConfig.getString(key)).getBytes());
+                }
+            }
+            baos.close();
+        } catch (IOException ex) {
+            strongkeyLogger.printStrongAuthStackTrace(skceConstants.SKEE_LOGGER, classname, "init()", ex);
+        }
+        strongkeyLogger.log(skceConstants.SKEE_LOGGER, Level.INFO, "SKCE-MSG-1052", baos.toString());
+
+        /**
+         * Check environment variable for installation location; if not found
+         * get default location specified in the configuration properties file.
+         *
+         * NOTE: Cannot use getConfigurationProperty() method to get this
+         * property as it will lead to an ExceptionInitializerError - the method
+         * requires skcehome to be non-null and if skcehome itself tries to use
+         * the method, it will be null.
+         */
+        if ((skcehome = System.getenv("SKCE_HOME")) == null) {
+            skcehome = defaultSKCEConfig.getString("skce.cfg.property.skcehome");
+        }
+
+        strongkeyLogger.log(skceConstants.SKEE_LOGGER, Level.INFO, "SKCE-MSG-1053", "SKCE_HOME is: " + skcehome);
+
+        // See if there is an over-riding properties file in SKCE_HOME
+        try {
+            File f = new File(skcehome + fs + "etc" + fs + "skce-configuration.properties");
+            /**
+             * Using try-with-resources; which will take care of closing the
+             * FileInputStream fis in any case (success or failure)
+             */
+            try (FileInputStream fis = new FileInputStream(f)) {
+                skcehrb = new java.util.PropertyResourceBundle(fis);
+            }
+
+            strongkeyLogger.log(skceConstants.SKEE_LOGGER, Level.INFO, "SKCE-MSG-1053",
+                    "Using skce-configuration.properties from SKCE_HOME directory: "
+                    + skcehome + "/etc/skce-configuration.properties");
+
+            // Sort properties for readability
+            baos = new ByteArrayOutputStream();
+            enm = skcehrb.getKeys();
+            keys = new ArrayList<>();
+            while (enm.hasMoreElements()) {
+                keys.add(enm.nextElement());
+            }
+
+            Collections.sort((List<String>) keys);
+            it = keys.iterator();
+
+            while (it.hasNext()) {
+                String key = (String) it.next();
+                baos.write(("\n\t" + key + ": ").getBytes());
+                if (key.contains("password") || key.contains("secretkey") || key.contains("accesskey")) {
+                    baos.write(("**********").getBytes());
+                } else {
+                    baos.write((skcehrb.getString(key)).getBytes());
+                }
+            }
+            baos.close();
+
+        } catch (java.io.FileNotFoundException ex) {
+            strongkeyLogger.log(skceConstants.SKEE_LOGGER, Level.WARNING, "SKCE-MSG-1053", "There is no skce-configuration.properties in the "
+                    + "SKCE_HOME directory; using system-wide skce-configuration.properties");
+        } catch (IOException ex) {
+            strongkeyLogger.printStrongAuthStackTrace(skceConstants.SKEE_LOGGER, classname, "init()", ex);
+        }
+        // Print out local configuration values from SKCE_HOME
+        strongkeyLogger.log(skceConstants.SKEE_LOGGER, Level.INFO, "SKCE-MSG-1054", baos.toString());
+
         setupOUPrefix();
     }
 

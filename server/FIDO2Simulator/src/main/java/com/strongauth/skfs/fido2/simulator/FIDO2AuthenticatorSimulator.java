@@ -268,16 +268,34 @@ public class FIDO2AuthenticatorSimulator
             BadPaddingException, UnsupportedEncodingException, InvalidKeySpecException,
             Exception
     {
+        
+        JsonObject authJson;
+        try (JsonReader jsonReader = Json.createReader(new StringReader(challenge))) {
+            authJson = jsonReader.readObject();
+        }
+        String nonce = authJson.getString(Constants.JSON_KEY_CHALLENGE_LABEL);
+        byte[] rpIDHash;
+        if(authJson.containsKey(Constants.JSON_KEY_RPID_LABEL)){
+            String rpid = authJson.getString(Constants.JSON_KEY_RPID_LABEL);
+            rpIDHash = Common.getDigestBytes(rpid,"SHA256");
+       
+        }else{
+            rpIDHash = Common.getRPID(new URI(origin).getHost());
+        }
+        
+        
+        
         /* Build clientDataJson. */
         JsonObject clientData = Json.createObjectBuilder()
                 .add("type", "webauthn.get")
-                .add("challenge", challenge)
+                .add("challenge", nonce)
                 .add("origin", origin)
                 .build();
+        
 
         /* Step 10. Create the almighty AUTHDATA (without attestedCredentialData). */
         /* Sets the RP ID Hash. */
-        byte[] rpIDHash = Common.getRPID(new URI(origin).getHost());
+//        byte[] rpIDHash = Common.getRPID(new URI(origin).getHost());
 
         byte flags = 0x00;
         flags |= 0x01;

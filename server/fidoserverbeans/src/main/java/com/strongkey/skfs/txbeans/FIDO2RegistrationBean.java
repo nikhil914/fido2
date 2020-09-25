@@ -93,7 +93,7 @@ public class FIDO2RegistrationBean implements FIDO2RegistrationBeanLocal {
             verifyOrigin(clientDataJson.getString(skfsConstants.JSON_KEY_SERVERORIGIN), origin);
 
             //TODO rpid hash matches.
-
+            
             //Get AttestationObject
             FIDO2AttestationObject attObject = retrieveAttestationObjectFromFIDOResponseObject(response);
 

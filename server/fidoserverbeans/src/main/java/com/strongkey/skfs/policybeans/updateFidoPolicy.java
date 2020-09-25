@@ -10,18 +10,18 @@ package com.strongkey.skfs.policybeans;
 
 import com.strongkey.appliance.utilities.applianceCommon;
 import com.strongkey.appliance.utilities.applianceConstants;
-import com.strongkey.skfs.utilities.skfsLogger;
+import com.strongkey.fido2mds.MDS;
 import com.strongkey.skce.pojos.MDSClient;
+import com.strongkey.skce.utilities.skceMaps;
+import com.strongkey.skfs.entitybeans.FidoPolicies;
 import com.strongkey.skfs.fido.policyobjects.FidoPolicyObject;
+import com.strongkey.skfs.messaging.replicateSKFEObjectBeanLocal;
+import com.strongkey.skfs.pojos.FidoPolicyMDSObject;
+import com.strongkey.skfs.requests.PatchFidoPolicyRequest;
 import com.strongkey.skfs.utilities.SKFEException;
 import com.strongkey.skfs.utilities.skfsCommon;
 import com.strongkey.skfs.utilities.skfsConstants;
-import com.strongkey.skce.utilities.skceMaps;
-import com.strongkey.skfs.entitybeans.FidoPolicies;
-import com.strongkey.skfs.messaging.replicateSKFEObjectBeanLocal;
-import com.strongkey.skfs.pojos.FidoPolicyMDSObject;
-import com.strongkey.fido2mds.MDS;
-import com.strongkey.skfs.requests.PatchFidoPolicyRequest;
+import com.strongkey.skfs.utilities.skfsLogger;
 import java.util.Base64;
 import java.util.Date;
 import java.util.logging.Level;
@@ -103,9 +103,11 @@ public class updateFidoPolicy implements updateFidoPolicyLocal {
         //Replicate
         String primarykey = sid + "-" + did + "-" + pid;
         if (applianceCommon.replicate()) {
-            String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_POLICIES, applianceConstants.REPLICATION_OPERATION_UPDATE, primarykey, fidopolicy);
-            if (response != null){
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(skfsCommon.getMessageProperty("FIDOJPA-ERR-1001") + response).build();
+            if (!Boolean.valueOf(skfsCommon.getConfigurationProperty("skfs.cfg.property.replicate.hashmapsonly"))) {
+                String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_POLICIES, applianceConstants.REPLICATION_OPERATION_UPDATE, primarykey, fidopolicy);
+                if (response != null) {
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(skfsCommon.getMessageProperty("FIDOJPA-ERR-1001") + response).build();
+                }
             }
         }
 

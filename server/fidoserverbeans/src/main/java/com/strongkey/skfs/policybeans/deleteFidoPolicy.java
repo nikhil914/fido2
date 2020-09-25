@@ -1,15 +1,14 @@
 /**
-* Copyright StrongAuth, Inc. All Rights Reserved.
-*
-* Use of this source code is governed by the GNU Lesser General Public License v2.1
-* The license can be found at https://github.com/StrongKey/fido2/blob/master/LICENSE
-*/
+ * Copyright StrongAuth, Inc. All Rights Reserved.
+ *
+ * Use of this source code is governed by the GNU Lesser General Public License v2.1
+ * The license can be found at https://github.com/StrongKey/fido2/blob/master/LICENSE
+ */
 package com.strongkey.skfs.policybeans;
 
 import com.strongkey.appliance.utilities.applianceCommon;
 import com.strongkey.appliance.utilities.applianceConstants;
 import com.strongkey.skfs.utilities.skfsLogger;
-import com.strongkey.skfs.utilities.SKFEException;
 import com.strongkey.skfs.utilities.skfsCommon;
 import com.strongkey.skfs.utilities.skfsConstants;
 import com.strongkey.skce.utilities.skceMaps;
@@ -66,10 +65,11 @@ public class deleteFidoPolicy implements deleteFidoPolicyLocal {
         //Replicate
         String primarykey = sid + "-" + did + "-" + pid;
         if (applianceCommon.replicate()) {
-
-            String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_POLICIES, applianceConstants.REPLICATION_OPERATION_DELETE, primarykey, policy);
-            if (response != null) {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(skfsCommon.getMessageProperty("FIDOJPA-ERR-1001") + response).build();
+            if (!Boolean.valueOf(skfsCommon.getConfigurationProperty("skfs.cfg.property.replicate.hashmapsonly"))) {
+                String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_POLICIES, applianceConstants.REPLICATION_OPERATION_DELETE, primarykey, policy);
+                if (response != null) {
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(skfsCommon.getMessageProperty("FIDOJPA-ERR-1001") + response).build();
+                }
             }
         }
 

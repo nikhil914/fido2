@@ -12,12 +12,12 @@ import com.strongkey.appliance.utilities.applianceConstants;
 import com.strongkey.crypto.interfaces.initCryptoModule;
 import com.strongkey.crypto.utility.CryptoException;
 import com.strongkey.skce.pojos.FidoKeysInfo;
-import com.strongkey.skfs.utilities.skfsConstants;
 import com.strongkey.skce.utilities.skceMaps;
 import com.strongkey.skfe.entitybeans.FidoKeys;
 import com.strongkey.skfs.messaging.replicateSKFEObjectBeanLocal;
 import com.strongkey.skfs.utilities.SKFEException;
 import com.strongkey.skfs.utilities.skfsCommon;
+import com.strongkey.skfs.utilities.skfsConstants;
 import com.strongkey.skfs.utilities.skfsLogger;
 import java.io.StringWriter;
 import java.text.ParseException;
@@ -283,9 +283,11 @@ public class updateFidoKeysStatus implements updateFidoKeysStatusLocal {
 
         try {
             if (applianceCommon.replicate()) {
-                String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_KEYS, applianceConstants.REPLICATION_OPERATION_UPDATE, primarykey, rk);
-                if(response != null){
-                    return response;
+                if (!Boolean.valueOf(skfsCommon.getConfigurationProperty("skfs.cfg.property.replicate.hashmapsonly"))) {
+                    String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_KEYS, applianceConstants.REPLICATION_OPERATION_UPDATE, primarykey, rk);
+                    if (response != null) {
+                        return response;
+                    }
                 }
             }
         } catch (Exception e) {

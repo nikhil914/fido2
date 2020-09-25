@@ -385,9 +385,11 @@ public class addFidoKeys implements addFidoKeysLocal {
         //add fido keys transport - RFE
         try {
             if (applianceCommon.replicate()) {
-                String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_KEYS, applianceConstants.REPLICATION_OPERATION_ADD, primarykey, newKey);
-                if(response != null){
-                    return response;
+                if (!Boolean.valueOf(skfsCommon.getConfigurationProperty("skfs.cfg.property.replicate.hashmapsonly"))) {
+                    String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_KEYS, applianceConstants.REPLICATION_OPERATION_ADD, primarykey, newKey);
+                    if (response != null) {
+                        return response;
+                    }
                 }
             }
         } catch (Exception e) {

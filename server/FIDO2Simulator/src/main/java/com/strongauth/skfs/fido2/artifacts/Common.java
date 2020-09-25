@@ -1050,6 +1050,13 @@ public final class Common {
         return fixed;
     }
 
+    public static byte[] getDigestBytes(String Input, String algorithm) throws NoSuchAlgorithmException, NoSuchProviderException, UnsupportedEncodingException {
+
+        MessageDigest digest;
+        digest = MessageDigest.getInstance(algorithm, "BCFIPS");
+        byte[] digestbytes = digest.digest(Input.getBytes("UTF-8"));
+        return digestbytes;
+    }
 
     /**
      * Function to retrieve the Attestation Key's digital certificate in Base64

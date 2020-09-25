@@ -22,9 +22,6 @@
 
 package com.strongauth.skfs.fido2.artifacts;
 
-import java.security.PrivateKey;
-import java.util.Base64;
-
 public class Constants
 {
     // Constants related to FIDO2
@@ -84,6 +81,7 @@ public class Constants
     public static final String JSON_KEY_SIGNATURE_LABEL = "signatureData";
     public static final String JSON_KEY_VERSION_LABEL = "version";
     public static final String JSON_KEY_RP_LABEL = "rp";
+    public static final String JSON_KEY_RPID_LABEL = "rpId";
 
     // Constants related to FIDO Client (Chrome browser for now)
     public static final String REGISTER_CLIENT_BAD_APPID = "TESTBADSIGNATUREWITHINVALIDAPPID";

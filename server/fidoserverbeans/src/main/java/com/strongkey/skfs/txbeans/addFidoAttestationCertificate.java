@@ -95,9 +95,11 @@ public class addFidoAttestationCertificate implements addFidoAttestationCertific
         String primarykey = sid + "-" + did + "-" + attcid;
         try {
             if (applianceCommon.replicate()) {
-                String response = replObj.execute(applianceConstants.ENTITY_TYPE_ATTESTATION_CERTIFICATES, applianceConstants.REPLICATION_OPERATION_ADD, primarykey, attestationCertificate);
-                if(response != null){
-                    throw new SKFEException(skfsCommon.getMessageProperty("FIDOJPA-ERR-1001") + response);
+                if (!Boolean.valueOf(skfsCommon.getConfigurationProperty("skfs.cfg.property.replicate.hashmapsonly"))) {
+                    String response = replObj.execute(applianceConstants.ENTITY_TYPE_ATTESTATION_CERTIFICATES, applianceConstants.REPLICATION_OPERATION_ADD, primarykey, attestationCertificate);
+                    if (response != null) {
+                        throw new SKFEException(skfsCommon.getMessageProperty("FIDOJPA-ERR-1001") + response);
+                    }
                 }
             }
         } catch (Exception e) {

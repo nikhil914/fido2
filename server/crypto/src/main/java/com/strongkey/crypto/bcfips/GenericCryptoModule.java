@@ -12,7 +12,6 @@ import com.strongkey.crypto.utility.CryptoException;
 import com.strongkey.crypto.utility.cryptoCommon;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -96,7 +95,7 @@ public class GenericCryptoModule {
 
             PrivateKey pvkey;
             if (standalone) {
-                pvkey = getXMLSignatureSigningKeyLocal(password, signingdn);
+                pvkey = cryptoCommon.getPvKey(did);
                 sigalg = cryptoCommon.getConfigurationProperty("crypto.cfg.property.signing.rsa.signaturealgorithm");
             } else {
                 pvkey = getXMLSignatureSigningKey(signingdn);
@@ -129,7 +128,7 @@ public class GenericCryptoModule {
         String sigalg;
         PublicKey pubKey;
         if (standalone) {
-            pubKey = getXMLSignatureVerificationKey(password, signingdn);
+            pubKey = cryptoCommon.getPublicKey(did);
             sigalg = cryptoCommon.getConfigurationProperty("crypto.cfg.property.signing.rsa.signaturealgorithm");
         } else {
             pubKey = getXMLSignatureVerificationKey("", signingdn);
@@ -153,9 +152,9 @@ public class GenericCryptoModule {
         return cryptomodule.getXMLSignatureSigningKey("", signingdn);
     }
 
-    private PrivateKey getXMLSignatureSigningKeyLocal(String password, String signingdn) throws CryptoException {
-        return getXMLSignatureSigningKey(password, signingdn);
-    }
+//    private PrivateKey getXMLSignatureSigningKeyLocal(String password, String signingdn) throws CryptoException {
+//        return getXMLSignatureSigningKey(password, signingdn);
+//    }
 
     public String hmacRequest(String password, String accesskey, String request) throws CryptoException {
         // Local variables
@@ -193,77 +192,78 @@ public class GenericCryptoModule {
         return Base64.toBase64String(cryptoCommon.calculateHmac(key, request.getBytes(), "HmacSHA256"));
     }
 
-    public PrivateKey getXMLSignatureSigningKey(String secret, String signingdn) throws CryptoException {
-        // Local variables
-        X509Certificate cert;               // X509 Certificate object
-        PrivateKey pvk = null;              // RSA Private key object
-        boolean[] keyusage;                // Key-usage bits of signing key
-        String keystoreurl;                 // Location of key-store (default is JCEKS file)
-
-        // Keystore location
-        try {
-            if ((keystoreurl = cryptoCommon.getConfigurationProperty("crypto.cfg.property.signing.keystorelocation")) == null) {
-                cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureSigningKey", "CRYPTO-ERR-2505", "crypto.cfg.property.signing.keystorelocation");
-                throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2505", "crypto.cfg.property.signing.truststorelocation"));
-            }
-        } catch (java.util.MissingResourceException e) {
-            cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureSigningKey", "CRYPTO-ERR-2505", "crypto.cfg.property.signing.keystorelocation");
-            throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2505", "crypto.cfg.property.signing.truststorelocation"));
-        }
-
-        try {
-            KeyStore keystore = KeyStore.getInstance("BCFKS", BC_FIPS_PROVIDER);
-            keystore.load(new FileInputStream(keystoreurl), secret.toCharArray());
-
-            // Convert signingdn to an BouncyCastle X500Name-compatible DN
-            X500Name xsdn = new X500Name(signingdn);
-
-            // Print out certs in the keystore
-            String alias;
-            cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2520", signingdn);
-            for (Enumeration<String> e = keystore.aliases(); e.hasMoreElements();) {
-                alias = e.nextElement();
-                cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2514", alias);
-                if (!alias.endsWith(".cert")) {
-                    continue;
-                }
-                cert = (X509Certificate) keystore.getCertificate(alias);
-                X500Name xcdn = new X500Name(cert.getSubjectX500Principal().getName());
-                cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2515", xcdn + " [" + alias + "]");
-
-                // First match the subject DN
-                if (xcdn.equals(xsdn)) {
-                    cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2516", signingdn);
-                    keyusage = cert.getKeyUsage();
-
-                    // Collect key-usages in a string buffer for logging
-                    StringWriter sw = new java.io.StringWriter();
-                    for (int i = 0; i < keyusage.length; i++) {
-                        sw.write("\nkeyusage[" + i + "]: " + keyusage[i]);
-                    }
-                    cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2517", sw.toString());
-
-                    // Now match for the signing bit
-                    if (keyusage[0]) {
-                        // If true, this is the certificate we want
-                        String pvkalias = alias.substring(0, alias.indexOf(".")); // Get rid of the .cert in alias
-                        pvk = ((KeyStore.PrivateKeyEntry) keystore.getEntry(pvkalias, new KeyStore.PasswordProtection(secret.toCharArray()))).getPrivateKey();
-                        cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2518", signingdn + " [" + alias + "]");
-                        break;
-                    }
-                }
-            }
-        } catch (KeyStoreException | UnrecoverableEntryException | CertificateException | NoSuchAlgorithmException | IOException ex) {
-            ex.printStackTrace();
-            cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureSigningKey", "CRYPTO-ERR-2506", ex.getLocalizedMessage());
-            throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2506", ex.getLocalizedMessage()));
-        }
-        if (pvk == null) {
-            cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureVerificationKey", "CRYPTO-ERR-2508");
-            throw new CryptoException(cryptoCommon.getMessageProperty("CRYPTO-ERR-2508"));
-        }
-        return pvk;
-    }
+//    public PrivateKey getXMLSignatureSigningKey(String secret, String signingdn) throws CryptoException {
+//        // Local variables
+//        X509Certificate cert;               // X509 Certificate object
+//        PrivateKey pvk = null;              // RSA Private key object
+//        boolean[] keyusage;                // Key-usage bits of signing key
+//        String keystoreurl;                 // Location of key-store (default is JCEKS file)
+//
+//        // Keystore location
+////        try {
+////            if ((keystoreurl = cryptoCommon.getConfigurationProperty("crypto.cfg.property.signing.keystorelocation")) == null) {
+////                cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureSigningKey", "CRYPTO-ERR-2505", "crypto.cfg.property.signing.keystorelocation");
+////                throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2505", "crypto.cfg.property.signing.truststorelocation"));
+////            }
+////        } catch (java.util.MissingResourceException e) {
+////            cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureSigningKey", "CRYPTO-ERR-2505", "crypto.cfg.property.signing.keystorelocation");
+////            throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2505", "crypto.cfg.property.signing.truststorelocation"));
+////        }
+//
+//        try {
+////            KeyStore keystore = KeyStore.getInstance("BCFKS", BC_FIPS_PROVIDER);
+////            keystore.load(new FileInputStream(keystoreurl), secret.toCharArray());
+//            KeyStore keystore = cryptoCommon.getKeystore();
+//
+//            // Convert signingdn to an BouncyCastle X500Name-compatible DN
+//            X500Name xsdn = new X500Name(signingdn);
+//
+//            // Print out certs in the keystore
+//            String alias;
+//            cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2520", signingdn);
+//            for (Enumeration<String> e = keystore.aliases(); e.hasMoreElements();) {
+//                alias = e.nextElement();
+//                cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2514", alias);
+//                if (!alias.endsWith(".cert")) {
+//                    continue;
+//                }
+//                cert = (X509Certificate) keystore.getCertificate(alias);
+//                X500Name xcdn = new X500Name(cert.getSubjectX500Principal().getName());
+//                cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2515", xcdn + " [" + alias + "]");
+//
+//                // First match the subject DN
+//                if (xcdn.equals(xsdn)) {
+//                    cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2516", signingdn);
+//                    keyusage = cert.getKeyUsage();
+//
+//                    // Collect key-usages in a string buffer for logging
+//                    StringWriter sw = new java.io.StringWriter();
+//                    for (int i = 0; i < keyusage.length; i++) {
+//                        sw.write("\nkeyusage[" + i + "]: " + keyusage[i]);
+//                    }
+//                    cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2517", sw.toString());
+//
+//                    // Now match for the signing bit
+//                    if (keyusage[0]) {
+//                        // If true, this is the certificate we want
+//                        String pvkalias = alias.substring(0, alias.indexOf(".")); // Get rid of the .cert in alias
+//                        pvk = ((KeyStore.PrivateKeyEntry) keystore.getEntry(pvkalias, new KeyStore.PasswordProtection(secret.toCharArray()))).getPrivateKey();
+//                        cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureSigningKey", "CRYPTO-MSG-2518", signingdn + " [" + alias + "]");
+//                        break;
+//                    }
+//                }
+//            }
+//        } catch (KeyStoreException | UnrecoverableEntryException | NoSuchAlgorithmException  ex) {
+//            ex.printStackTrace();
+//            cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureSigningKey", "CRYPTO-ERR-2506", ex.getLocalizedMessage());
+//            throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2506", ex.getLocalizedMessage()));
+//        }
+//        if (pvk == null) {
+//            cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureVerificationKey", "CRYPTO-ERR-2508");
+//            throw new CryptoException(cryptoCommon.getMessageProperty("CRYPTO-ERR-2508"));
+//        }
+//        return pvk;
+//    }
 
     /**
      * Private method that retrieves the reference to a signing key from a

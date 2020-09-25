@@ -6,14 +6,14 @@
 */
 package com.strongkey.skfs.txbeans;
 
-import com.strongkey.skfs.messaging.replicateSKFEObjectBeanLocal;
 import com.strongkey.appliance.utilities.applianceCommon;
 import com.strongkey.appliance.utilities.applianceConstants;
-import com.strongkey.skfs.utilities.skfsLogger;
 import com.strongkey.skfe.entitybeans.FidoKeys;
+import com.strongkey.skfs.messaging.replicateSKFEObjectBeanLocal;
 import com.strongkey.skfs.utilities.SKFEException;
 import com.strongkey.skfs.utilities.skfsCommon;
 import com.strongkey.skfs.utilities.skfsConstants;
+import com.strongkey.skfs.utilities.skfsLogger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Resource;
@@ -126,10 +126,12 @@ public class deleteFidoKeys implements deleteFidoKeysLocal {
         em.flush();
 
         try {
-            if(applianceCommon.replicate()){
-                String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_KEYS, applianceConstants.REPLICATION_OPERATION_DELETE, primarykey, rk);
-                if(response != null){
-                    return response;
+            if(applianceCommon.replicate()) {
+                if (!Boolean.valueOf(skfsCommon.getConfigurationProperty("skfs.cfg.property.replicate.hashmapsonly"))) {
+                    String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_KEYS, applianceConstants.REPLICATION_OPERATION_DELETE, primarykey, rk);
+                    if (response != null) {
+                        return response;
+                    }
                 }
             }
         } catch (Exception e) {

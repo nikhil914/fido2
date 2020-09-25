@@ -11,12 +11,12 @@ import com.strongkey.appliance.utilities.applianceCommon;
 import com.strongkey.appliance.utilities.applianceConstants;
 import com.strongkey.crypto.interfaces.initCryptoModule;
 import com.strongkey.crypto.utility.CryptoException;
-import com.strongkey.skfs.utilities.skfsConstants;
 import com.strongkey.skfs.entitybeans.FidoUsers;
 import com.strongkey.skfs.entitybeans.FidoUsersPK;
 import com.strongkey.skfs.messaging.replicateSKFEObjectBeanLocal;
 import com.strongkey.skfs.utilities.SKFEException;
 import com.strongkey.skfs.utilities.skfsCommon;
+import com.strongkey.skfs.utilities.skfsConstants;
 import com.strongkey.skfs.utilities.skfsLogger;
 import java.io.StringWriter;
 import java.util.logging.Level;
@@ -163,7 +163,7 @@ public class addFidoUserBean implements addFidoUserBeanLocal {
             //  get signature for the xml
             String signedxml = null;
             try {
-                signedxml = initCryptoModule.getCryptoModule().signDBRow(did.toString(), d.getSkceSigningdn(), efsXml, Boolean.valueOf(standalone), signingKeystorePassword);
+                signedxml = initCryptoModule.getCryptoModule().signDBRow(did.toString(), d.getSkceSigningdn(), efsXml,Boolean.valueOf(standalone), signingKeystorePassword);
             } catch (CryptoException ex) {
                 Logger.getLogger(addFidoUserBean.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -184,10 +184,12 @@ public class addFidoUserBean implements addFidoUserBeanLocal {
         em.clear();
 
         try {
-            if(applianceCommon.replicate()){
-                String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_USERS, applianceConstants.REPLICATION_OPERATION_ADD, primarykey, fidoUser);
-                if(response != null){
-                    return response;
+            if(applianceCommon.replicate()) {
+                if (!Boolean.valueOf(skfsCommon.getConfigurationProperty("skfs.cfg.property.replicate.hashmapsonly"))) {
+                    String response = replObj.execute(applianceConstants.ENTITY_TYPE_FIDO_USERS, applianceConstants.REPLICATION_OPERATION_ADD, primarykey, fidoUser);
+                    if (response != null) {
+                        return response;
+                    }
                 }
             }
         } catch (Exception e) {
