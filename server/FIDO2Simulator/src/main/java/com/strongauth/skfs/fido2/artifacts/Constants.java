@@ -27,7 +27,7 @@ public class Constants
     // Constants related to FIDO2
     public static final Boolean EXTENSION_DATA_INCLUDED = false;
     public static final Boolean ATTESTED_DATA_INCLUDED = true;
-    public static final Boolean USER_VERIFIED = false;
+    public static final Boolean USER_VERIFIED = true;
     public static final Boolean USER_PRESENT = false;
 
     public static final int FIDO_REGISTER_COUNTER = 0;

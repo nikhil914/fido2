@@ -9,11 +9,11 @@
 ###############################################################
 
 DB_URL='fido-docker.cluster-c9iyctxcjygt.us-west-1.rds.amazonaws.com'
-DB_USER='admin'
-DB_PASS='Abcd1234!'
+DB_USER='root'
+DB_PASS='BigKahuna'
 MARIA_SKFSDBUSER_PASSWORD='AbracaDabra'
 
-LDAP_URLPORT='ldap://3.236.203.121:389'
+LDAP_URLPORT='ldap://3.236.203.121:1389'
 LDAP_TYPE='AD'
 LDAP_BINDDN='Administrator@strongkey.com'
 LDAP_PASS='dne(!nPCiVJ'

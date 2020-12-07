@@ -153,6 +153,16 @@ fi
 
 $STRONGKEY_HOME/$MARIATGT/bin/mysql --user=skfsdbuser --password=$MARIA_SKFSDBUSER_PASSWORD --database=skfs -e "create index fkid on fido_keys(sid,did,fkid);"
 
+policyRes=`$STRONGKEY_HOME/$MARIATGT/bin/mysql -s -N --user=skfsdbuser --password=$MARIA_SKFSDBUSER_PASSWORD --database=skfs -e "select policy from fido_policies where certificate_profile_name = 'Default Policy'\G"`
+policyBase64=$(echo $policyRes | cut -d ' ' -f 15-)
+policyJSON=`echo $policyBase64 | python -m base64 -d`
+if [[ ! "$policyJSON" == "trusted_authenticators" ]]; then
+        updatedPolicyJSON=$(echo $policyJSON | sed -r 's/(.*)}/\1,\"trusted_authenticators\":{\"aaguids\":[]}}/')
+        updatedPolicyBase64=`echo $updatedPolicyJSON | python -m base64`
+        $STRONGKEY_HOME/$MARIATGT/bin/mysql -s -N --user=skfsdbuser --password=$MARIA_SKFSDBUSER_PASSWORD --database=skfs -e "update fido_policies set policy = '${updatedPolicyBase64}' where certificate_profile_name = 'Default Policy'\G"
+fi
+
+
 # Start Glassfish
 echo
 echo "Starting Glassfish..."

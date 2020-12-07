@@ -6,6 +6,7 @@
  */
 package com.strongkey.skfs.txbeans;
 
+import com.strongkey.appliance.entitybeans.Configurations;
 import com.strongkey.appliance.entitybeans.Domains;
 import com.strongkey.appliance.utilities.applianceCommon;
 import com.strongkey.appliance.utilities.applianceMaps;
@@ -13,8 +14,10 @@ import com.strongkey.crypto.utility.CryptoException;
 import com.strongkey.crypto.utility.cryptoCommon;
 import com.strongkey.skce.utilities.skceCommon;
 import com.strongkey.skfs.messaging.SKCEBacklogProcessor;
-import com.strongkey.skfs.utilities.skfsCommon;
+import com.strongkey.skfs.utilities.SKFSCommon;
 import java.util.Collection;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import javax.ejb.EJB;
 import javax.ejb.Singleton;
@@ -26,14 +29,15 @@ public class startServices {
 
     @EJB
     getDomainsBeanLocal getdomejb;
-
-    final private String SIGN_SUFFIX = skfsCommon.getConfigurationProperty("skfs.cfg.property.signsuffix");
+    @EJB
+    getFIDOConfigurationLocal getfidoconfig;
 
     @PostConstruct
     public void initialize() {
 
-        String standalone = skfsCommon.getConfigurationProperty("skfs.cfg.property.standalone.fidoengine");
+        String standalone = SKFSCommon.getConfigurationProperty("skfs.cfg.property.standalone.fidoengine");
         if (standalone.equalsIgnoreCase("true")) {
+            System.out.println("======Initializing domains and configurations======");
             skceCommon.getConfigurationProperty("skce.cfg.property.skcehome");
             Collection<Domains> domains = getdomejb.getAll();
 
@@ -44,9 +48,45 @@ public class startServices {
                     // Cache domain objects
                     applianceMaps.putDomain(did, d);
 
+                    // Get configuration information for the domain
+                    if (!SKFSCommon.isConfigurationMapped(did)) {
+                        Collection<Configurations> cfgcoll;
+                        Collection<Configurations> skcecfgcoll;
+                        try {
+                            cfgcoll = getfidoconfig.byDid(did);
+                            skcecfgcoll = cfgcoll;
+                            if (cfgcoll != null) {
+                                SKFSCommon.putConfiguration(did, cfgcoll.toArray(new Configurations[cfgcoll.size()]));
+
+                                skceCommon.putConfiguration(did, skcecfgcoll.toArray(new Configurations[skcecfgcoll.size()]));
+                            }
+                        } catch (Exception ex) {
+                            Logger.getLogger(startServices.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+
+                    }
+                    //add appl config
+                    Configurations cfg = getfidoconfig.getByPK(did, "ldape.cfg.property.service.ce.ldap.ldapdnsuffix");
+                    if(cfg != null){
+                        skceCommon.setdnSuffixConfigured(Boolean.TRUE);
+                    }
+                    
+                    cfg = getfidoconfig.getByPK(did, "ldape.cfg.property.service.ce.ldap.ldapgroupsuffix");
+                    if(cfg != null){
+                        skceCommon.setgroupSuffixConfigured(Boolean.TRUE);
+                    }
+                    
+                    cfg = getfidoconfig.getByPK(did, "appl.cfg.property.service.ce.ldap.ldaptype");
+                    if(cfg == null){
+                        skceCommon.setldaptype(did, applianceCommon.getApplianceConfigurationProperty("appl.cfg.property.service.ce.ldap.ldaptype"));
+                    }else{
+                        skceCommon.setldaptype(did, cfg.getConfigValue());
+                    }
+                            
+
                     try {
-                        cryptoCommon.loadSigningKey(did.toString(), skfsCommon.getConfigurationProperty("skfs.cfg.property.standalone.signingkeystore.password"), d.getSkceSigningdn());
-                        cryptoCommon.loadVerificationKey(did.toString(), skfsCommon.getConfigurationProperty("skfs.cfg.property.standalone.signingkeystore.password"), d.getSkceSigningdn());
+                        cryptoCommon.loadSigningKey(did.toString(), SKFSCommon.getConfigurationProperty("skfs.cfg.property.standalone.signingkeystore.password"), d.getSkceSigningdn());
+                        cryptoCommon.loadVerificationKey(did.toString(), SKFSCommon.getConfigurationProperty("skfs.cfg.property.standalone.signingkeystore.password"), d.getSkceSigningdn());
                     } catch (CryptoException ex) {
                         ex.printStackTrace();
                     }

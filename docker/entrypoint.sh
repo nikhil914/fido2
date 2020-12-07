@@ -69,18 +69,15 @@ $GLASSFISH_HOME/bin/asadmin set resources.jdbc-connection-pool.SKFSPool.property
 $GLASSFISH_HOME/bin/asadmin set resources.jdbc-connection-pool.SKFSPool.property.password=$DB_PASS
 
 # Treat the following as retrieving files from vault (mounting necessary to grab files)
-# Remove when fidoserver on github is updated (currently commented for temp build from local)
-rm /usr/local/strongkey/fidoserver.ear
-wget https://demo4.strongkey.com/40ee4e53c08805ac5d101f389006c99c5ed0cef2a9b4044e1a1db5b626c41f9a/fidoserver.ear
-wget https://github.com/StrongKey/fido2/raw/master/server/fidoserverInstall/signingkeystore.bcfks
-wget https://github.com/StrongKey/fido2/raw/master/server/fidoserverInstall/signingtruststore.bcfks
+#wget https://github.com/StrongKey/fido2/raw/master/server/fidoserverInstall/signingkeystore.bcfks
+#wget https://github.com/StrongKey/fido2/raw/master/server/fidoserverInstall/signingtruststore.bcfks
 mv signingkeystore.bcfks signingtruststore.bcfks $STRONGKEY_HOME/skfs/keystores
 
 # Deploy fidoserver
 echo "Deploying fidoserver..."
 echo $(sha256sum $STRONGKEY_HOME/fidoserver.ear)
-$GLASSFISH_HOME/bin/asadmin restart-domain || { echo 'Failed to restart domain' ; exit 1; }
-$GLASSFISH_HOME/bin/asadmin deploy $STRONGKEY_HOME/fidoserver.ear || { echo 'Failed to deploy fidoserver' ; exit 1; }
+$GLASSFISH_HOME/bin/asadmin restart-domain || { echo 'Failed to restart domain'; }
+$GLASSFISH_HOME/bin/asadmin deploy $STRONGKEY_HOME/fidoserver.ear || { echo 'Failed to deploy fidoserver'; }
 
 # If custering arguments exist, set up clustering of the container
 # No longer need to add hostnames to /etc/hosts file since hosts are in DNS

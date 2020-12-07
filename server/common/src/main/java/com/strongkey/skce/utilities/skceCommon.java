@@ -7,22 +7,26 @@
 
 package com.strongkey.skce.utilities;
 
-import com.strongkey.appliance.utilities.applianceCommon;
+import com.strongkey.appliance.entitybeans.Configurations;
 import com.strongkey.appliance.utilities.strongkeyLogger;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.ResourceBundle;
+import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.logging.Level;
 import javax.naming.Context;
 import javax.naming.NamingException;
@@ -40,14 +44,14 @@ public class skceCommon {
     // Property files used by this application for application messages
     private static final ResourceBundle msgrb = ResourceBundle.getBundle("resources.skce.skce-messages");
 
-    //  Well known number to be used to test SAKA encrypt & decrypt
-    private static final String PAN = "1235711131719230";
-
     // Default file extension for SKCE-encrypted files
     public static final String ENC_FILE_EXT = ".zenc";
 
     // StrongKey  home-directory specific property file
     private static ResourceBundle skcehrb = null;
+    
+    private static SortedMap<Long, Map> skceconfigmap = new ConcurrentSkipListMap<>();
+    private static SortedMap<Long, String> ldaptypemap = new ConcurrentSkipListMap<>();
 
     // Location where StrongKey CryproEngine  is installed on this machine
     private static String skcehome;
@@ -70,11 +74,10 @@ public class skceCommon {
 
     //  flag that indicates whether the default enc keys are being generated for the first time or not.
     public static Boolean DEFAULTKEYS_GENERATION_FIRSTTIME = true;
-
-    public static SecureRandom securerandom;
-
-    private static String SERVICE_OU_PREFIX;
-    private static String SEARCH_OU_PREFIX;
+    
+    private static Boolean DNSUFFIX_CONFIGURE_PER_DOMAIN = false;
+    private static Boolean GROUPSUFFIX_CONFIGURE_PER_DOMAIN = false;
+    
 
     static {
         
@@ -168,7 +171,6 @@ public class skceCommon {
         // Print out local configuration values from SKCE_HOME
         strongkeyLogger.log(skceConstants.SKEE_LOGGER, Level.INFO, "SKCE-MSG-1054", baos.toString());
 
-        setupOUPrefix();
     }
 
     /*
@@ -186,6 +188,36 @@ Y88b  d88P Y88..88P 888  888 888    888 Y88b 888 Y88b 888 888     888  888 Y88b.
                                          "Y88P"
     ************************************************************************
      */
+    
+    /**
+     * Gets the value of the property for the specified domain with the
+     * specified key from either the Configuration map or the default Properties
+     * object (if not found in the configuration map).
+     *
+     * @param did - Long value of the domain ID
+     * @param k - The key in the configuration property map
+     * @return String - The value of the specified key
+     */
+    public static String getConfigurationProperty(Long did, String k) {
+        strongkeyLogger.logp(skceConstants.SKEE_LOGGER, Level.FINE, classname, "getConfigurationProperty", "SKCE-MSG-1056", did + "-" + k);
+
+        // First check for the domain in the configmap
+        if (skceconfigmap.containsKey(did)) {
+            strongkeyLogger.logp(skceConstants.SKEE_LOGGER, Level.FINE, classname, "getConfigurationProperty", "SKCE-MSG-1057", did);
+            Map m = skceconfigmap.get(did);
+            strongkeyLogger.logp(skceConstants.SKEE_LOGGER, Level.FINE, classname, "getConfigurationProperty", "SKCE-MSG-1058", k + " [DID=" + did + "]");
+            if (m != null) {
+                if (m.containsKey(k)) {
+                    return (String) m.get(k);
+                }
+            }
+        }
+
+        // Default - in case returned map and DB have no value with the key k
+        strongkeyLogger.logp(skceConstants.SKEE_LOGGER, Level.FINE, classname, "getConfigurationProperty", "SKCE-MSG-1059", k + " [DID=" + did + ", KEY=" + k + ", VALUE=" + getConfigurationProperty(k) + "]");
+        return getConfigurationProperty(k);
+    }
+    
     /**
      * Gets the value of the property with the specified key from either the
      * SKCE_HOME home-directory - if the property file exists there - or from
@@ -219,6 +251,72 @@ Y88b  d88P Y88..88P 888  888 888    888 Y88b 888 Y88b 888 888     888  888 Y88b.
             return s;
         }
 
+    }
+    
+    public static boolean isConfigurationMapped(Long did)
+    {
+        return skceconfigmap.containsKey(did);
+    }
+    
+    /**
+     * Puts a customized configuration map of properties for the specified
+     * domain into the Configuration map.
+     *
+     * @param did - Long value of the domain ID.  This value serves as the
+     * key in the configmap object (which points to the configuration Map )
+     * @param cfgarray - The array of configuration objects that need to be
+     * put into a domain-specific map and then loaded into the system-wide
+     * configuration map.
+     */
+    public static void putConfiguration(Long did, Configurations[] cfgarray) {
+        // First convert the array into a map
+        SortedMap<String, String> newconfigs = new TreeMap<>();
+        for (Configurations c : cfgarray) {
+            if (c.getConfigurationsPK().getConfigKey().startsWith("ldape") || c.getConfigurationsPK().getConfigKey().startsWith("skce")) {
+                newconfigs.put(c.getConfigurationsPK().getConfigKey(), c.getConfigValue());
+            }
+        }
+
+        // If the map already exists, need to add its unique values to the map
+        if (skceconfigmap.containsKey(did)) {
+            Map<String, String> currentconfigs = skceconfigmap.get(did);
+
+            Set<String> newkeys = newconfigs.keySet();
+            for (String key : newkeys) {
+                currentconfigs.put(key, newconfigs.get(key));
+            }
+        } else {
+            skceconfigmap.put(did, newconfigs);
+        }
+    }
+
+    public static void removeConfiguration(Long did){
+        skceconfigmap.remove(did);
+    }
+    
+    public static void removeConfiguration(Long did, Configurations[] cfgarray) {
+
+        SortedMap<String, String> newconfigs = new TreeMap<>();
+        for (Configurations c : cfgarray) {
+            if (c.getConfigurationsPK().getConfigKey().startsWith("skfs")) {
+                newconfigs.put(c.getConfigurationsPK().getConfigKey(), c.getConfigValue());
+            }
+        }
+
+        if (skceconfigmap.containsKey(did)) {
+            Map<String, String> currentconfigs = skceconfigmap.get(did);
+            Set<String> newkeys = newconfigs.keySet();
+            for (String key : newkeys) {
+                currentconfigs.remove(key);
+            }
+        }
+    }
+    
+    public static void setldaptype(Long did, String ldaptype){
+        ldaptypemap.put(did, ldaptype);
+    }
+    public static String getldaptype(Long did){
+        return ldaptypemap.get(did);
     }
 
     /*
@@ -320,25 +418,24 @@ Y88b. .d88P Y88b.  888 888 888 Y88b.  888 Y8b.          X88
 88888888 8888888P"  d88P     888 888        8888888888
     ***********************************************************************
      */
-    public static String getSERVICE_OU_PREFIX() {
-        return SERVICE_OU_PREFIX;
-    }
-
-    public static String getSEARCH_OU_PREFIX() {
-        return SEARCH_OU_PREFIX;
-    }
-
-    public static void setupOUPrefix() {
-        if (applianceCommon.getApplianceConfigurationProperty("appl.cfg.property.service.ce.ldap.ldaptype").equalsIgnoreCase("LDAP")) {
-            SERVICE_OU_PREFIX = ",did=";
-            SEARCH_OU_PREFIX = ",did=";
-        } else {
-            SERVICE_OU_PREFIX = ",ou=";
-            SEARCH_OU_PREFIX = ",ou=";
-        }
-
-    }
 //
+    
+    public static void setdnSuffixConfigured(Boolean input){
+        DNSUFFIX_CONFIGURE_PER_DOMAIN = input;
+    }
+    
+    public static Boolean isdnSuffixConfigured(){
+        return DNSUFFIX_CONFIGURE_PER_DOMAIN;
+    }
+    
+    public static void setgroupSuffixConfigured(Boolean input){
+        GROUPSUFFIX_CONFIGURE_PER_DOMAIN = input;
+    }
+    
+    public static Boolean isgroupSuffixConfigured(){
+        return GROUPSUFFIX_CONFIGURE_PER_DOMAIN;
+    }
+    
     // LDAP related look-ups
     public static String lookupGroupCN(String groupDN) {
         return "";

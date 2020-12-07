@@ -397,9 +397,11 @@ public final class cryptoCommon {
         }
 
         PublicKey pbk = null;
+        InputStream is = null;
         try {
             KeyStore truststore = KeyStore.getInstance("BCFKS", BC_FIPS_PROVIDER);
-            truststore.load(new FileInputStream(truststorelocation), secret.toCharArray());
+            is = new FileInputStream(truststorelocation);
+            truststore.load(is, secret.toCharArray());
             cryptoCommon.logp(Level.FINE, classname, "getXMLSignatureVerificationKey", "CRYPTO-MSG-2521", truststorelocation);
 
             // Print out certs in the truststore
@@ -436,13 +438,23 @@ public final class cryptoCommon {
             }
 
             X509EncodedKeySpec X509publicKey = new X509EncodedKeySpec(pbk.getEncoded());
-            KeyFactory kf = KeyFactory.getInstance("RSA");
+//            KeyFactory kf = KeyFactory.getInstance("RSA");
+            KeyFactory kf = KeyFactory.getInstance("EC");
 
             PublicKey pKey = kf.generatePublic(X509publicKey);
             publickeymap.put(did, pKey);
-        } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | InvalidKeySpecException | IOException ex) {
+        } catch (KeyStoreException | CertificateException | NoSuchAlgorithmException | InvalidKeySpecException | IOException | NullPointerException ex) {
             cryptoCommon.logp(Level.SEVERE, classname, "getXMLSignatureVerificationKey", "CRYPTO-ERR-2507", ex.getLocalizedMessage());
             throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2507", ex.getLocalizedMessage()));
+        }
+        finally {
+            try {
+                if (is != null) {
+                    is.close();
+                }
+            } catch (IOException ex) {
+                Logger.getLogger(cryptoCommon.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
         
     }
@@ -459,9 +471,11 @@ public final class cryptoCommon {
             throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2505", "crypto.cfg.property.signing.truststorelocation"));
         }
 
+        InputStream is = null;
         try {
             keystore = KeyStore.getInstance("BCFKS", BC_FIPS_PROVIDER);
-            keystore.load(new FileInputStream(keystoreurl), secret.toCharArray());
+            is = new FileInputStream(keystoreurl);
+            keystore.load(is, secret.toCharArray());
         
 
             // get the private key
@@ -508,7 +522,8 @@ public final class cryptoCommon {
                 }
             }
             PKCS8EncodedKeySpec X509privateKey = new PKCS8EncodedKeySpec(pvk.getEncoded());
-            KeyFactory kf = KeyFactory.getInstance("RSA");
+//            KeyFactory kf = KeyFactory.getInstance("RSA");
+            KeyFactory kf = KeyFactory.getInstance("EC");
 
             PrivateKey pKey = kf.generatePrivate(X509privateKey);
             pvkeymap.put(did, pKey);
@@ -518,6 +533,14 @@ public final class cryptoCommon {
             throw new CryptoException(cryptoCommon.getMessageWithParam("CRYPTO-ERR-2506", ex.getLocalizedMessage()));
         } catch (CertificateException | UnrecoverableEntryException | InvalidKeySpecException ex) {
             ex.printStackTrace();
+        }
+        finally{
+            try {
+                if(is!=null)
+                    is.close();
+            } catch (IOException ex) {
+                Logger.getLogger(cryptoCommon.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
     }
     
@@ -543,7 +566,7 @@ public final class cryptoCommon {
         PublicKey attcertPublicKey = attestationCertificate.getPublicKey();
         byte[] attPublicKey = attcertPublicKey.getEncoded();
         SubjectPublicKeyInfo spki = SubjectPublicKeyInfo.getInstance(ASN1Sequence.getInstance(attPublicKey));
-        spki.getAlgorithm();
+//        spki.getAlgorithm();
 
         //  get algorithm from the AlgorithmIdentifier refer to RFC 5480
         AlgorithmIdentifier sigAlgId = spki.getAlgorithm();

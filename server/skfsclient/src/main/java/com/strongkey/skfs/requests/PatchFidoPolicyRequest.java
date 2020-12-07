@@ -6,10 +6,10 @@
 */
 package com.strongkey.skfs.requests;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 
-@JsonInclude(Include.NON_NULL)
 public class PatchFidoPolicyRequest {
 
     private Long startDate;
@@ -19,6 +19,8 @@ public class PatchFidoPolicyRequest {
     private String status;
     private String notes;
 
+   
+    
     public Long getStartDate() {
         return startDate;
     }
@@ -67,5 +69,28 @@ public class PatchFidoPolicyRequest {
         this.notes = notes;
     }
 
+    public JsonObject toJsonObject() {
+
+        JsonObjectBuilder job = Json.createObjectBuilder();
+        if (this.startDate != null) {
+            job.add("startDate", startDate);
+        }
+        if (this.endDate != null) {
+            job.add("endDate", endDate);
+        }
+        if (this.Policy != null) {
+            job.add("Policy", Policy);
+        }
+        if (this.version != null) {
+            job.add("version", version);
+        }
+        if (this.status != null) {
+            job.add("status", status);
+        }
+        if (this.notes != null) {
+            job.add("notes", notes);
+        }
+        return job.build();
+    }
 
 }

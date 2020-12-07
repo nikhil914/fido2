@@ -12,10 +12,9 @@ import com.strongkey.crypto.interfaces.initCryptoModule;
 import com.strongkey.crypto.utility.CryptoException;
 import com.strongkey.skfe.entitybeans.FidoKeys;
 import com.strongkey.skfs.utilities.SKFEException;
-import com.strongkey.skfs.utilities.skfsCommon;
-import com.strongkey.skfs.utilities.skfsConstants;
-import com.strongkey.skfs.utilities.skfsLogger;
-import java.io.StringWriter;
+import com.strongkey.skfs.utilities.SKFSCommon;
+import com.strongkey.skfs.utilities.SKFSConstants;
+import com.strongkey.skfs.utilities.SKFSLogger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -28,9 +27,6 @@ import javax.persistence.NoResultException;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
 
 @Stateless
 public class getFidoKeys implements getFidoKeysLocal {
@@ -41,7 +37,7 @@ public class getFidoKeys implements getFidoKeysLocal {
      */
     private final String classname = this.getClass().getName();
 
-    final private String SIGN_SUFFIX = skfsCommon.getConfigurationProperty("skfs.cfg.property.signsuffix");
+    final private String SIGN_SUFFIX = SKFSCommon.getConfigurationProperty("skfs.cfg.property.signsuffix");
     /**
      * Persistence context for derby
      */
@@ -232,6 +228,47 @@ public class getFidoKeys implements getFidoKeysLocal {
             return null;
         }
     }
+    
+    @Override
+    public List<FidoKeys> getKeysByUsernameStatus(Long did, String username, String status) throws SKFEException {
+        try {
+            Query q = em.createNamedQuery("FidoKeys.findNewestKeyByUsernameStatus", FidoKeys.class);
+            q.setHint("javax.persistence.cache.storeMode", "REFRESH");
+            q.setParameter("username", username);
+            q.setParameter("did", did);
+            q.setParameter("status", status);
+
+            List<FidoKeys> fidoKeysColl = q.getResultList();
+//            if (!fidoKeysColl.isEmpty()) {
+//                for (FidoKeys fk : fidoKeysColl) {
+//                    if (fk != null) {
+//                        try {
+//                            verifyDBRecordSignature(did, fk);
+//                        } catch (SKFEException ex) {
+//                            fidoKeysColl.remove(fk);
+//                        }
+//                    }
+//                }
+//            }
+//            return fidoKeysColl;
+            List<FidoKeys> validFidoKeysColl = new ArrayList<>();
+            validFidoKeysColl.addAll(fidoKeysColl);
+            if (!fidoKeysColl.isEmpty()) {
+                for (FidoKeys fk : fidoKeysColl) {
+                    if (fk != null) {
+                        try {
+                            verifyDBRecordSignature(did, fk);
+                        } catch (SKFEException ex) {
+                            validFidoKeysColl.remove(fk);
+                        }
+                    }
+                }
+            }
+            return validFidoKeysColl;
+        } catch (NoResultException ex) {
+            return null;
+        }
+    }
 
     /**
      * Verifies the database row level signature of the given object and returns
@@ -244,50 +281,51 @@ public class getFidoKeys implements getFidoKeysLocal {
     private void verifyDBRecordSignature(Long did, FidoKeys fk)
             throws SKFEException {
         if (fk != null) {
-            if (skfsCommon.getConfigurationProperty("skfs.cfg.property.db.signature.rowlevel.verify")
+            if (SKFSCommon.getConfigurationProperty("skfs.cfg.property.db.signature.rowlevel.verify")
                     .equalsIgnoreCase("true")) {
                 Domains d = getdomejb.byDid(did);
-                String standalone = skfsCommon.getConfigurationProperty("skfs.cfg.property.standalone.fidoengine");
+                String standalone = SKFSCommon.getConfigurationProperty("skfs.cfg.property.standalone.fidoengine");
                 String signingKeystorePassword = "";
                 if (standalone.equalsIgnoreCase("true")) {
-                    signingKeystorePassword = skfsCommon.getConfigurationProperty("skfs.cfg.property.standalone.signingkeystore.password");
+                    signingKeystorePassword = SKFSCommon.getConfigurationProperty("skfs.cfg.property.standalone.signingkeystore.password");
                 }
 
-                String documentid = fk.getFidoKeysPK().getSid()
-                        + "-" + fk.getFidoKeysPK().getDid()
-                        + "-" + fk.getFidoKeysPK().getUsername()
-                        + "-" + fk.getFidoKeysPK().getFkid();
-                fk.setId(documentid);
-
-                //jaxB conversion
-                //converting the databean object to xml
-                StringWriter writer = new StringWriter();
-                JAXBContext jaxbContext;
-                Marshaller marshaller;
-                try {
-                    jaxbContext = JAXBContext.newInstance(FidoKeys.class);
-                    marshaller = jaxbContext.createMarshaller();
-                    marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-                    marshaller.marshal(fk, writer);
-                } catch (JAXBException ex) {
-                    Logger.getLogger(getFidoKeys.class.getName()).log(Level.SEVERE, null, ex);
-                }
+//                String documentid = fk.getFidoKeysPK().getSid()
+//                        + "-" + fk.getFidoKeysPK().getDid()
+//                        + "-" + fk.getFidoKeysPK().getUsername()
+//                        + "-" + fk.getFidoKeysPK().getFkid();
+//                fk.setId(documentid);
+//
+//                //jaxB conversion
+//                //converting the databean object to xml
+//                StringWriter writer = new StringWriter();
+//                JAXBContext jaxbContext;
+//                Marshaller marshaller;
+//                try {
+//                    jaxbContext = JAXBContext.newInstance(FidoKeys.class);
+//                    marshaller = jaxbContext.createMarshaller();
+//                    marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+//                    marshaller.marshal(fk, writer);
+//                } catch (JAXBException ex) {
+//                    Logger.getLogger(getFidoKeys.class.getName()).log(Level.SEVERE, null, ex);
+//                }
 
                 //  verify row level signature
                 boolean verified = false;
                 try {
-                    verified = initCryptoModule.getCryptoModule().verifyDBRow(did.toString(), writer.toString(), d.getSkceSigningdn(), Boolean.valueOf(standalone), signingKeystorePassword, fk.getSignature());
+//                    verified = initCryptoModule.getCryptoModule().verifyDBRow(did.toString(), writer.toString(), d.getSkceSigningdn(), Boolean.valueOf(standalone), signingKeystorePassword, fk.getSignature());
+                    verified = initCryptoModule.getCryptoModule().verifyDBRow(did.toString(), fk.toJsonObject(), d.getSkceSigningdn(), Boolean.valueOf(standalone), signingKeystorePassword, fk.getSignature());
                 } catch (CryptoException ex) {
                     Logger.getLogger(getFidoKeys.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 if (!verified) {
-                    skfsLogger.logp(skfsConstants.SKFE_LOGGER, Level.SEVERE, classname, "verifyDBRecordSignature",
+                    SKFSLogger.logp(SKFSConstants.SKFE_LOGGER, Level.SEVERE, classname, "verifyDBRecordSignature",
                             "SKCE-ERR-5001", "er sid-did-erqid="
                             + fk.getFidoKeysPK().getSid()
                             + "-" + fk.getFidoKeysPK().getDid()
                             + "-" + fk.getFidoKeysPK().getUsername()
                             + "-" + fk.getFidoKeysPK().getFkid());
-                    throw new SKFEException(skfsCommon.getMessageProperty("SKCE-ERR-5001")
+                    throw new SKFEException(SKFSCommon.getMessageProperty("SKCE-ERR-5001")
                             + "fk sid-did-erqid="
                             + fk.getFidoKeysPK().getSid()
                             + "-" + fk.getFidoKeysPK().getDid()
@@ -296,9 +334,9 @@ public class getFidoKeys implements getFidoKeysLocal {
                 }
             }
         } else {
-            skfsLogger.logp(skfsConstants.SKFE_LOGGER, Level.SEVERE, classname, "verifyDBRecordSignature",
+            SKFSLogger.logp(SKFSConstants.SKFE_LOGGER, Level.SEVERE, classname, "verifyDBRecordSignature",
                     "FIDOJPA-ERR-1001", " er object");
-            throw new SKFEException(skfsCommon.getMessageProperty("FIDOJPA-ERR-1001") + " fk object");
+            throw new SKFEException(SKFSCommon.getMessageProperty("FIDOJPA-ERR-1001") + " fk object");
         }
     }
 }

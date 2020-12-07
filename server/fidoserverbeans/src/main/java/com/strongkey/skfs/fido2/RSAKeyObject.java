@@ -7,13 +7,14 @@
 
 package com.strongkey.skfs.fido2;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.cbor.CBORFactory;
-import com.fasterxml.jackson.dataformat.cbor.CBORParser;
-import com.strongkey.skfs.utilities.skfsConstants;
-import com.strongkey.skfs.utilities.skfsLogger;
+import com.strongkey.cbor.jacob.CborDecoder;
+import com.strongkey.skfs.utilities.SKFSCommon;
+import com.strongkey.skfs.utilities.SKFSConstants;
+import com.strongkey.skfs.utilities.SKFSLogger;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.PushbackInputStream;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 
@@ -23,15 +24,33 @@ public class RSAKeyObject extends FIDO2KeyObject {
 
     public void decode(byte[] cbor) throws IOException {
 
-        CBORFactory f = new CBORFactory();
-        ObjectMapper mapper = new ObjectMapper(f);
-        CBORParser parser = f.createParser(cbor);
+//        CBORFactory f = new CBORFactory();
+//        ObjectMapper mapper = new ObjectMapper(f);
+//        CBORParser parser = f.createParser(cbor);
+//
+//        Map<String, Object> pkObjectMap = mapper.readValue(parser, new TypeReference<Map<String, Object>>() {
+//        });
 
-        Map<String, Object> pkObjectMap = mapper.readValue(parser, new TypeReference<Map<String, Object>>() {
-        });
+        ByteArrayInputStream m_bais = new ByteArrayInputStream(cbor);
+        PushbackInputStream m_is = new PushbackInputStream(m_bais);
+        CborDecoder m_stream = new CborDecoder(m_is);
+        
+        long len = m_stream.readMapLength();
+         Map<String, Object> pkObjectMap = new HashMap<>();
+            for (long i = 0; len < 0 || i < len; i++) {
+                String key = (String) SKFSCommon.readGenericItem(m_stream);
+                if (len < 0 && (key == null)) {
+                    // break read...
+                    break;
+                }
+                Object value = SKFSCommon.readGenericItem(m_stream);
+                pkObjectMap.put(key, value);
+            }
 
-        for (String key : pkObjectMap.keySet()) {
-            skfsLogger.log(skfsConstants.SKFE_LOGGER, Level.FINE, "FIDO-MSG-2001",
+//        for (String key : pkObjectMap.keySet()) {
+        for (Map.Entry<String,Object> entry : pkObjectMap.entrySet()) {
+            String key = entry.getKey();
+            SKFSLogger.log(SKFSConstants.SKFE_LOGGER, Level.FINE, "FIDO-MSG-2001",
                     "key : " + key + ", Value : " + pkObjectMap.get(key).toString());
             switch (key) {
                 case "1":
@@ -45,6 +64,8 @@ public class RSAKeyObject extends FIDO2KeyObject {
                     break;
                 case "-2":
                     e = (byte[]) pkObjectMap.get(key);
+                    break;
+                default:
                     break;
             }
         }
