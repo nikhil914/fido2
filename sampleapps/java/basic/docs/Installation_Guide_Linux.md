@@ -31,7 +31,7 @@ This project is a basic service provider web application written in Java to work
 4. Download the service provider web application .war file [basicserver.war](https://github.com/StrongKey/fido2/raw/master/sampleapps/java/basic/basicserver.war).
 
     ```sh
-    wget https://github.com/StrongKey/fido2/raw/master/sampleapps/java/basic/basicserver.war
+    wget https://github.com/StrongKey/fido2/raw/docker/sampleapps/java/basic/basicserver.war
     ```
 
 5. Add the .war file to Payara.
