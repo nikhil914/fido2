@@ -1,3 +1,4 @@
 "scripts": {
-  "start": server/pom.xml"
+  "start": server/pom.xml",
+   "root": server/pom.xml"
 }
